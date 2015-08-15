@@ -1,3 +1,6 @@
 images/*
+dist
+dist/*
+_*
 .*
 .idea
