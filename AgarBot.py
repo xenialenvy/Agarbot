@@ -1,10 +1,8 @@
 __author__ = 'DJ'
 #Script to control mouse movement let's see what we can do
-import pyautogui
 from selenium import webdriver
-from matplotlib import pyplot as plt
+#from matplotlib import pyplot as plt
 from math import (acos, sqrt, radians, cos, sin, degrees,pi,atan)
-from numpy import concatenate, linalg
 import numpy as np
 import time
 import os.path
