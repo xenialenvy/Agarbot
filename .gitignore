@@ -1,5 +1,9 @@
+classifier.txt
+Menu.py
 *.app
 setup.py
+test.py
+Classifiers
 build
 deploy.sh
 compile.sh

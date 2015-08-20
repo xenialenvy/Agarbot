@@ -83,8 +83,8 @@ class Blob:
 
 
 class Mouse:
-    def __init__(self,mag=100, browser='firefox'):
-        top_bar = {'firefox':100}
+    def __init__(self,mag=100, browser='Firefox'):
+        top_bar = {'Firefox':100,'Chrome':115}
         self.__x, self.__y = position()
         self.__top_bar = top_bar[browser]
         self.__y -= top_bar[browser]

@@ -1,8 +1,9 @@
 __author__ = 'DJ'
-#Script to control mouse movement let's see what we can do
+from tkinter import *
+from tkinter import ttk
 from selenium import webdriver
 from matplotlib import pyplot as plt
-from math import (acos, sqrt, radians, cos, sin, degrees,pi,atan,fabs)
+from math import (acos, sqrt, radians, cos, sin, degrees,pi,atan,fabs,hypot)
 import numpy as np
 import time
 import os.path
@@ -10,12 +11,87 @@ from Blob import Blob, Mouse
 import cv2
 home = os.path.expanduser("~")
 import os
+import tkinter
 
+class App(ttk.Frame):
+
+    @classmethod
+    def main(cls):
+        NoDefaultRoot()
+        root = Tk()
+        app = cls(root)
+        app.grid(sticky=NSEW)
+        root.grid_columnconfigure(0,weight=1)
+        root.grid_rowconfigure(0,weight=1)
+        root.resizable(True, False)
+        root.title("AgarBot")
+        root.mainloop()
+
+    def __init__(self,root):
+        super().__init__(root)
+        width = 300
+        height=300
+        x = 580
+        y = 0
+        root.geometry('%dx%d+%d+%d' % (width, height, x, y))
+        self._root().minsize(width=width,height=height)
+        self._root().maxsize(width=width,height=height)
+        self.create_variables()
+        self.create_widgets()
+        self.grid_widgets()
+        self.grid_columnconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=1)
+
+    def create_variables(self):
+        self.browser_box_value = StringVar(self)
+        self.header_text ="Choose your desired browser and press start".strip()
+        self.browser_box_values = ('Chrome', 'Firefox')
+        self.browser_size = (580,320)
+
+    def create_widgets(self):
+        self.browser_box_label = ttk.Label(self, text="Select browser")
+        self.browser_box = ttk.Combobox(self,width=10, textvariable=self.browser_box_value, state='readonly')
+        self.browser_box['values'] = self.browser_box_values
+        self.browser_box.current(1)
+        self.update_idletasks()
+        self.header = ttk.Label(self, text=self.header_text,wraplength=self._root().winfo_width())
+        self.start_button = ttk.Button(self,text='Start',command=lambda: start_game(get_browser(self.browser_box_value.get()),self.browser_size))
+        self.exit_button = ttk.Button(self,text='Exit',command=self._root().destroy)
+
+    def grid_widgets(self):
+        options = dict(padx=5,pady=5)
+        self.browser_box_label.grid(column=0,row=1,**options)
+        self.browser_box.grid(column=1,row=1, **options)
+        self.header.grid(column=0,row=0,columnspan=2, **options)
+        self.start_button.grid(column=0,row=3, **options)
+        self.exit_button.grid(column=1,row=3, **options)
+
+    def label_width(self):
+        window_width = self.winfo_width()
+        self.wrap_len = window_width/2
+        width = self.wrap_len / 400 * 55
+        return width
+
+def get_browser(browser_str):
+    if browser_str == 'Firefox':
+        browser = webdriver.Firefox()
+        top_bar = 80
+        print(type(browser))
+    elif browser_str == 'Chrome':
+        browser = webdriver.Chrome()
+        top_bar = 95
+        print(type(browser))
+    browser.set_window_size(580,320+top_bar)
+    browser.set_window_position(0,0)
+    return browser
 
 def start_game(browser,size):
-    browser.set_window_size(size[0],size[1])
-    mouse = Mouse()
-    mouse.set_center(size[0]/2,size[1]/2-40)
+    if type(browser) == webdriver.Firefox:
+        browser_str = "Firefox"
+    if type(browser) == webdriver.Chrome:
+        browser_str = "Chrome"
+    mouse = Mouse(browser=browser_str)
+    mouse.set_center(size[0]/2,size[1]/2)
     mouse.set_position(0,0)
     browser.get('http://agar.io')
     element = 0
@@ -33,6 +109,7 @@ def start_game(browser,size):
             browser.find_element_by_class_name('btn-play-guest').click()
         except:
             continue
+        play_game(browser,size)
 
 
 def find_blobs(image,size):
@@ -118,8 +195,11 @@ def vec_from_angle(vec_angle):
     return vec
 
 
-def threat_function(dist):
-    return 1
+def threat_function(dist,size):
+    center_x,center_y = size
+    max_d = hypot(center_x,center_y)
+    f = 1 - dist/max_d
+    return f
 
 
 def get_image(browser):
@@ -137,17 +217,21 @@ def get_image(browser):
 
 def play_game(browser, size):
     i = 0
-    while i < 741:
+    while True:
         mouse = Mouse()
         mouse.set_center(size[0]/2, size[1]/2)
         angle = None
         safe = True
         image = get_image(browser)
-        cv2.imwrite(home + "/AgarBot/images/image"+str(i)+".png",image)
+        #cv2.imwrite(home + "/AgarBot/images/image"+str(i)+".png",image)
         blobs = find_blobs(image,size)
+        if not blobs:
+            continue
         me = find_me(blobs,size)
         remove_name(blobs,me)
         threats, food = classify(blobs,me)
+        #if menu(image):
+            #print("menu")
         if threats:
             angle = avoid(threats,size)
             safe = False
@@ -205,9 +289,10 @@ def avoid(threats, size):
     for blob in threats:
         v = blob.coord_from_center()
         v_mag = blob.dist_from_center()
+        m = threat_function(v_mag,size)
         v_unit = [v[0]/v_mag,v[1]/v_mag]
-        v_final[0] -= v_unit[0]
-        v_final[1] -= v_unit[1]
+        v_final[0] -= (v_unit[0] * m)
+        v_final[1] -= (v_unit[1] * m)
     x = v_final[0]
     y = v_final[1]
     angle = arc_tan(x, y)
@@ -287,12 +372,18 @@ def remove_name(blobs,me):
             blobs.pop(i)
         i+=1
 
-def main():
-    browser = webdriver.Firefox()
-    size = (580, 400)
-    #size = (1000,580)
-    start_game(browser, size)
-    size = (browser.get_window_size()['width'], browser.get_window_size()['height']-80)
-    play_game(browser, size)
 
-main()
+def menu(image):
+    menu_classifier = cv2.CascadeClassifier('./Classifiers/MenuClassifier.xml')
+    menu_found = menu_classifier.detectMultiScale(image)
+    x,y,w,h = None,None,0,0
+    for menu_item in menu_found:
+        if menu_item.any():
+            print(menu_found)
+            (x,y,w,h) = menu_found[0]
+        if w > 400 and h > 200:
+            return True
+    return False
+
+if __name__ == '__main__':
+    App.main()
